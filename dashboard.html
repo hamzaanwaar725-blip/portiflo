@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Dashboard | Portfolio Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // TODO: Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Auth guard
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      document.getElementById('userEmail').textContent = user.email;
+      loadData();
+    });
+
+    // Load data from Firestore
+    async function loadData() {
+      try {
+        // Load portfolio items
+        const portfolioSnap = await getDocs(collection(db, 'portfolio'));
+        const portfolioList = document.getElementById('portfolioList');
+        portfolioList.innerHTML = '';
+        if (portfolioSnap.empty) {
+          portfolioList.innerHTML = '<p style="color:#888;font-size:0.9rem;padding:1rem;">No projects yet. Add one below.</p>';
+        } else {
+          portfolioSnap.forEach(doc => {
+            const d = doc.data();
+            portfolioList.innerHTML += `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:8px;margin-bottom:8px;" class="section-alt">
+                <div>
+                  <p style="font-weight:600;font-size:0.9rem;">${d.title || 'Untitled'}</p>
+                  <p class="text-muted" style="font-size:0.78rem;">${d.category || ''}</p>
+                </div>
+                <button onclick="deleteItem('portfolio','${doc.id}')" style="background:rgba(239,68,68,0.15);color:#ef4444;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.8rem;">Delete</button>
+              </div>`;
+          });
+        }
+
+        // Load testimonials
+        const testimonialsSnap = await getDocs(collection(db, 'testimonials'));
+        const testimonialList = document.getElementById('testimonialList');
+        testimonialList.innerHTML = '';
+        if (testimonialsSnap.empty) {
+          testimonialList.innerHTML = '<p style="color:#888;font-size:0.9rem;padding:1rem;">No testimonials yet. Add one below.</p>';
+        } else {
+          testimonialsSnap.forEach(doc => {
+            const d = doc.data();
+            testimonialList.innerHTML += `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:8px;margin-bottom:8px;" class="section-alt">
+                <div>
+                  <p style="font-weight:600;font-size:0.9rem;">${d.name || 'Anonymous'}</p>
+                  <p class="text-muted" style="font-size:0.78rem;">${(d.text || '').substring(0,60)}...</p>
+                </div>
+                <button onclick="deleteItem('testimonials','${doc.id}')" style="background:rgba(239,68,68,0.15);color:#ef4444;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.8rem;">Delete</button>
+              </div>`;
+          });
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        showToast('Error loading data. Check Firebase setup.', 'error');
+      }
+    }
+
+    // Delete item
+    window.deleteItem = async (collectionName, id) => {
+      if (!confirm('Are you sure you want to delete this item?')) return;
+      try {
+        await deleteDoc(doc(db, collectionName, id));
+        showToast('Deleted successfully!');
+        loadData();
+      } catch (e) {
+        showToast('Error deleting item.', 'error');
+      }
+    };
+
+    // Add portfolio item
+    window.addPortfolioItem = async () => {
+      const title = document.getElementById('projTitle').value.trim();
+      const category = document.getElementById('projCategory').value;
+      const desc = document.getElementById('projDesc').value.trim();
+
+      if (!title || !desc) return showToast('Please fill in all fields.', 'error');
+
+      try {
+        await addDoc(collection(db, 'portfolio'), { title, category, desc, createdAt: new Date() });
+        showToast('Project added!');
+        document.getElementById('projTitle').value = '';
+        document.getElementById('projDesc').value = '';
+        loadData();
+      } catch (e) {
+        showToast('Error adding project.', 'error');
+      }
+    };
+
+    // Add testimonial
+    window.addTestimonial = async () => {
+      const name = document.getElementById('testName').value.trim();
+      const role = document.getElementById('testRole').value.trim();
+      const text = document.getElementById('testText').value.trim();
+
+      if (!name || !text) return showToast('Please fill in required fields.', 'error');
+
+      try {
+        await addDoc(collection(db, 'testimonials'), { name, role, text, createdAt: new Date() });
+        showToast('Testimonial added!');
+        document.getElementById('testName').value = '';
+        document.getElementById('testRole').value = '';
+        document.getElementById('testText').value = '';
+        loadData();
+      } catch (e) {
+        showToast('Error adding testimonial.', 'error');
+      }
+    };
+
+    // Save site settings
+    window.saveSettings = async () => {
+      const heroTitle = document.getElementById('heroTitle').value.trim();
+      const heroSubtitle = document.getElementById('heroSubtitle').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('contactEmail').value.trim();
+
+      try {
+        await setDoc(doc(db, 'settings', 'site'), { heroTitle, heroSubtitle, phone, email, updatedAt: new Date() });
+        showToast('Settings saved!');
+      } catch (e) {
+        showToast('Error saving settings.', 'error');
+      }
+    };
+
+    // Load settings
+    async function loadSettings() {
+      try {
+        const snap = await getDocs(collection(db, 'settings'));
+        snap.forEach(d => {
+          const data = d.data();
+          if (document.getElementById('heroTitle')) document.getElementById('heroTitle').value = data.heroTitle || '';
+          if (document.getElementById('heroSubtitle')) document.getElementById('heroSubtitle').value = data.heroSubtitle || '';
+          if (document.getElementById('phone')) document.getElementById('phone').value = data.phone || '';
+          if (document.getElementById('contactEmail')) document.getElementById('contactEmail').value = data.email || '';
+        });
+      } catch (e) {}
+    }
+
+    // Sign out
+    window.signOutUser = async () => {
+      await signOut(auth);
+      window.location.href = 'login.html';
+    };
+
+    // Toast
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.background = type === 'success' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)';
+      toast.style.display = 'block';
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => { toast.style.display = 'none'; }, 300); }, 3000);
+    }
+
+    // Switch tabs
+    window.switchTab = (tab) => {
+      document.querySelectorAll('.dash-tab').forEach(t => t.style.display = 'none');
+      document.querySelectorAll('.dash-nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById(tab).style.display = 'block';
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+      if (tab === 'tab-settings') loadSettings();
+    };
+
+    window.loadData = loadData;
+  </script>
+</head>
+<body class="dark" style="min-height:100vh;">
+
+  <!-- Toast Notification -->
+  <div id="toast" style="display:none;position:fixed;top:24px;right:24px;z-index:9999;color:white;padding:12px 20px;border-radius:10px;font-size:0.9rem;font-weight:600;transition:opacity 0.3s;"></div>
+
+  <div style="display:flex;min-height:100vh;">
+    <!-- SIDEBAR -->
+    <aside class="dashboard-sidebar" style="padding:1.5rem 1rem;">
+      <!-- Logo -->
+      <div style="display:flex;align-items:center;gap:10px;padding:0 8px;margin-bottom:2rem;">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;color:#0a0a0f;flex-shrink:0;">AI</div>
+        <div>
+          <p style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.95rem;">Portfolio Admin</p>
+          <p class="text-muted" id="userEmail" style="font-size:0.72rem;"></p>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <nav>
+        <div class="dash-nav-item active" data-tab="tab-overview" onclick="switchTab('tab-overview')">
+          <span>📊</span> Overview
+        </div>
+        <div class="dash-nav-item" data-tab="tab-portfolio" onclick="switchTab('tab-portfolio')">
+          <span>💼</span> Portfolio
+        </div>
+        <div class="dash-nav-item" data-tab="tab-testimonials" onclick="switchTab('tab-testimonials')">
+          <span>⭐</span> Testimonials
+        </div>
+        <div class="dash-nav-item" data-tab="tab-settings" onclick="switchTab('tab-settings')">
+          <span>⚙️</span> Site Settings
+        </div>
+      </nav>
+
+      <!-- Bottom Actions -->
+      <div style="position:absolute;bottom:1.5rem;left:1rem;right:1rem;">
+        <a href="../index.html" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;text-decoration:none;font-size:0.88rem;margin-bottom:8px;opacity:0.7;transition:opacity 0.2s;" class="text-muted">
+          <span>🌐</span> View Site
+        </a>
+        <button onclick="signOutUser()" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;border-radius:10px;font-size:0.88rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;cursor:pointer;transition:all 0.3s;">
+          <span>🚪</span> Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="dashboard-main">
+
+      <!-- TAB: OVERVIEW -->
+      <div id="tab-overview" class="dash-tab">
+        <div style="margin-bottom:2rem;">
+          <h1 style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;">Dashboard</h1>
+          <p class="text-muted" style="font-size:0.9rem;margin-top:4px;">Welcome back! Here's your portfolio overview.</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.2rem;margin-bottom:2rem;">
+          <div class="card" style="padding:1.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:start;">
+              <div>
+                <p class="text-muted" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;">Portfolio Items</p>
+                <p style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--accent);margin-top:4px;">6</p>
+              </div>
+              <span style="font-size:1.5rem;">💼</span>
+            </div>
+          </div>
+          <div class="card" style="padding:1.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:start;">
+              <div>
+                <p class="text-muted" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;">Testimonials</p>
+                <p style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:#fbbf24;margin-top:4px;">3</p>
+              </div>
+              <span style="font-size:1.5rem;">⭐</span>
+            </div>
+          </div>
+          <div class="card" style="padding:1.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:start;">
+              <div>
+                <p class="text-muted" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;">Pages</p>
+                <p style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:#7c3aed;margin-top:4px;">5</p>
+              </div>
+              <span style="font-size:1.5rem;">📄</span>
+            </div>
+          </div>
+          <div class="card" style="padding:1.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:start;">
+              <div>
+                <p class="text-muted" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;">Status</p>
+                <p style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#10b981;margin-top:8px;">🟢 Live</p>
+              </div>
+              <span style="font-size:1.5rem;">🌐</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="card" style="padding:1.5rem;">
+          <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:1.2rem;">Quick Actions</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            <button onclick="switchTab('tab-portfolio')" class="btn-primary" style="padding:10px 20px;font-size:0.85rem;">➕ Add Project</button>
+            <button onclick="switchTab('tab-testimonials')" class="btn-outline" style="padding:10px 20px;font-size:0.85rem;">⭐ Add Testimonial</button>
+            <button onclick="switchTab('tab-settings')" class="btn-outline" style="padding:10px 20px;font-size:0.85rem;">⚙️ Edit Content</button>
+            <a href="../index.html" target="_blank" class="btn-outline" style="padding:10px 20px;font-size:0.85rem;">🌐 View Site</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: PORTFOLIO -->
+      <div id="tab-portfolio" class="dash-tab" style="display:none;">
+        <div style="margin-bottom:2rem;">
+          <h1 style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;">Portfolio Projects</h1>
+          <p class="text-muted" style="font-size:0.9rem;margin-top:4px;">Add, edit, and manage your portfolio items.</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:2rem;align-items:start;">
+          <!-- Add Form -->
+          <div class="card" style="padding:1.8rem;">
+            <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:1.5rem;">Add New Project</h3>
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+              <div>
+                <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Project Title *</label>
+                <input id="projTitle" type="text" class="input-field" placeholder="E.g. AI Chatbot for Fashion Store" />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Category</label>
+                <select id="projCategory" class="input-field" style="cursor:pointer;">
+                  <option value="AI Automation">AI Automation</option>
+                  <option value="AI Chatbot">AI Chatbot</option>
+                  <option value="E-Commerce">E-Commerce</option>
+                  <option value="Digital Marketing">Digital Marketing</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Description *</label>
+                <textarea id="projDesc" class="input-field" rows="3" placeholder="Brief description of the project and results..."></textarea>
+              </div>
+              <button onclick="addPortfolioItem()" class="btn-primary" style="justify-content:center;">➕ Add Project</button>
+            </div>
+          </div>
+
+          <!-- List -->
+          <div class="card" style="padding:1.8rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+              <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;">Current Projects</h3>
+              <button onclick="loadData()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:0.85rem;">🔄 Refresh</button>
+            </div>
+            <div id="portfolioList"><p class="text-muted" style="font-size:0.9rem;">Loading...</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: TESTIMONIALS -->
+      <div id="tab-testimonials" class="dash-tab" style="display:none;">
+        <div style="margin-bottom:2rem;">
+          <h1 style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;">Testimonials</h1>
+          <p class="text-muted" style="font-size:0.9rem;margin-top:4px;">Manage client testimonials.</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:2rem;align-items:start;">
+          <!-- Add Form -->
+          <div class="card" style="padding:1.8rem;">
+            <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:1.5rem;">Add Testimonial</h3>
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+              <div>
+                <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Client Name *</label>
+                <input id="testName" type="text" class="input-field" placeholder="John Smith" />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Role / Company</label>
+                <input id="testRole" type="text" class="input-field" placeholder="CEO, Company Name" />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Testimonial Text *</label>
+                <textarea id="testText" class="input-field" rows="4" placeholder="What did the client say about your work?"></textarea>
+              </div>
+              <button onclick="addTestimonial()" class="btn-primary" style="justify-content:center;">⭐ Add Testimonial</button>
+            </div>
+          </div>
+
+          <!-- List -->
+          <div class="card" style="padding:1.8rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+              <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;">Current Testimonials</h3>
+              <button onclick="loadData()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:0.85rem;">🔄 Refresh</button>
+            </div>
+            <div id="testimonialList"><p class="text-muted" style="font-size:0.9rem;">Loading...</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: SETTINGS -->
+      <div id="tab-settings" class="dash-tab" style="display:none;">
+        <div style="margin-bottom:2rem;">
+          <h1 style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;">Site Settings</h1>
+          <p class="text-muted" style="font-size:0.9rem;margin-top:4px;">Edit your website content and information.</p>
+        </div>
+
+        <div class="card" style="padding:2rem;max-width:700px;">
+          <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:1.5rem;">Hero Section Content</h3>
+          <div style="display:flex;flex-direction:column;gap:1.2rem;">
+            <div>
+              <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Hero Title</label>
+              <input id="heroTitle" type="text" class="input-field" placeholder="Hi, I'm Ahsan" />
+            </div>
+            <div>
+              <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Hero Subtitle</label>
+              <textarea id="heroSubtitle" class="input-field" rows="2" placeholder="AI Automation Expert & E-Commerce Specialist..."></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div>
+                <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">WhatsApp Number</label>
+                <input id="phone" type="text" class="input-field" placeholder="+92 300 1234567" />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Contact Email</label>
+                <input id="contactEmail" type="email" class="input-field" placeholder="ahsanraza@email.com" />
+              </div>
+            </div>
+            <div style="padding-top:0.5rem;border-top:1px solid var(--dark-border);">
+              <p class="text-muted" style="font-size:0.8rem;margin-bottom:1rem;">⚠️ Note: After saving settings, you'll need to manually update the HTML files for changes to reflect on the live site, or integrate a Firestore-powered rendering system.</p>
+              <button onclick="saveSettings()" class="btn-primary">💾 Save Settings</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="../js/main.js"></script>
+  <style>
+    @media (max-width: 768px) {
+      .dashboard-sidebar { width: 100%; min-height: auto; position: relative; padding-bottom: 5rem; }
+      .dashboard-main { margin-left: 0; }
+    }
+  </style>
+</body>
+</html>

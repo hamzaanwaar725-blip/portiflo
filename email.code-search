@@ -1,0 +1,137 @@
+# Query: email
+# ContextLines: 1
+
+57 results - 8 files
+
+index.html:
+  223            <div style="display:flex;gap:4px;margin-bottom:1rem;color:#fbbf24;">★★★★★</div>
+  224:           <p class="text-muted" style="font-size:0.95rem;line-height:1.8;margin-bottom:1.5rem;font-style:italic;">"The workflow automation he set up saves us 20+ hours every week. Our entire order processing and email system now runs on autopilot. Game changer!"</p>
+  225            <div style="display:flex;align-items:center;gap:12px;">
+
+SETUP_GUIDE.md:
+   40  2. Click **Get Started**
+   41: 3. Click **Email/Password** → Enable it → **Save**
+   42  4. Go to **Users** tab → **Add User**
+   43: 5. Enter YOUR email and a strong password
+   44  6. This is your admin login!
+
+   98  In `js/components.js` and `pages/contact.html`:
+   99: - Replace `hamzaanwaar725@gmail.com` with your email
+  100  - Replace `+92 300 1234567` with your phone
+
+  195  1. Go to `your-site.com/dashboard/login.html`
+  196: 2. Login with your Firebase admin email/password
+  197  3. Add/remove portfolio items and testimonials
+
+  207  
+  208: The current form shows a success message but doesn't send emails.
+  209: To actually receive emails, add EmailJS:
+  210  
+  211: ### 6.1 Setup EmailJS (Free - 200 emails/month)
+  212: 1. Go to https://emailjs.com → Sign up
+  213: 2. Add Email Service (connect Gmail)
+  214: 3. Create Email Template
+  215  4. Get your Public Key, Service ID, Template ID
+  216  
+  217: ### 6.2 Add EmailJS to Contact Page
+  218  In `pages/contact.html`, before `</body>`:
+  219  ```html
+  220: <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  221  <script>
+  222:   emailjs.init("YOUR_PUBLIC_KEY");
+  223    
+
+  225      e.preventDefault();
+  226:     emailjs.sendForm('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', this)
+  227        .then(() => alert('Message sent!'), () => alert('Error sending.'));
+
+  287  If you need help with setup, contact:
+  288: - Email: ahsanraza@email.com
+  289  - WhatsApp: +92 300 1234567
+
+dashboard\dashboard.html:
+   35        }
+   36:       document.getElementById('userEmail').textContent = user.email;
+   37        loadData();
+
+  143        const phone = document.getElementById('phone').value.trim();
+  144:       const email = document.getElementById('contactEmail').value.trim();
+  145  
+  146        try {
+  147:         await setDoc(doc(db, 'settings', 'site'), { heroTitle, heroSubtitle, phone, email, updatedAt: new Date() });
+  148          showToast('Settings saved!');
+
+  162            if (document.getElementById('phone')) document.getElementById('phone').value = data.phone || '';
+  163:           if (document.getElementById('contactEmail')) document.getElementById('contactEmail').value = data.email || '';
+  164          });
+
+  208            <p style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.95rem;">Portfolio Admin</p>
+  209:           <p class="text-muted" id="userEmail" style="font-size:0.72rem;"></p>
+  210          </div>
+
+  408                <div>
+  409:                 <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Contact Email</label>
+  410:                 <input id="contactEmail" type="email" class="input-field" placeholder="ahsanraza@email.com" />
+  411                </div>
+
+dashboard\login.html:
+  16      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  17:     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  18  
+
+  45          e.preventDefault();
+  46:         const email = document.getElementById('email').value;
+  47          const password = document.getElementById('password').value;
+
+  54          try {
+  55:           await signInWithEmailAndPassword(auth, email, password);
+  56            window.location.href = 'dashboard.html';
+
+  58            let msg = 'Login failed. Please check your credentials.';
+  59:           if (error.code === 'auth/user-not-found') msg = 'No account found with this email.';
+  60            if (error.code === 'auth/wrong-password') msg = 'Incorrect password.';
+  61:           if (error.code === 'auth/invalid-email') msg = 'Invalid email format.';
+  62            if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Please try again later.';
+
+  96          <div style="margin-bottom:1.2rem;">
+  97:           <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:8px;">Email Address</label>
+  98:           <input type="email" id="email" class="input-field" placeholder="admin@yoursite.com" required autocomplete="email" />
+  99          </div>
+
+js\components.js:
+  88            <div style="display:flex;align-items:center;gap:8px;font-size:0.9rem;" class="text-muted">
+  89:             <span>📧</span> hamzaanwaar725@gmail.com
+  90            </div>
+
+js\main.js:
+  154  
+  155:       // Simulate send (replace with Firebase/EmailJS in production)
+  156        await new Promise(r => setTimeout(r, 1500));
+
+pages\ai-automation.html:
+   57              <li style="display:flex;align-items:center;gap:8px;font-size:0.88rem;" class="text-muted"><span style="color:var(--accent);">✓</span> Multi-platform (WhatsApp, web, Telegram)</li>
+   58:             <li style="display:flex;align-items:center;gap:8px;font-size:0.88rem;" class="text-muted"><span style="color:var(--accent);">✓</span> CRM & email integration</li>
+   59            </ul>
+
+   67            <ul style="display:flex;flex-direction:column;gap:6px;">
+   68:             <li style="display:flex;align-items:center;gap:8px;font-size:0.88rem;" class="text-muted"><span style="color:var(--accent);">✓</span> Email & notification automation</li>
+   69              <li style="display:flex;align-items:center;gap:8px;font-size:0.88rem;" class="text-muted"><span style="color:var(--accent);">✓</span> CRM data sync and updates</li>
+
+  149            </div>
+  150:           <p class="text-muted" style="font-size:0.9rem;line-height:1.7;margin-bottom:1.2rem;">Automated entire order-to-fulfillment pipeline for an Amazon seller. Syncs orders, generates invoices, sends tracking emails automatically.</p>
+  151            <div style="display:flex;gap:2rem;padding-top:1rem;border-top:1px solid var(--dark-border);">
+
+  167            </div>
+  168:           <p class="text-muted" style="font-size:0.9rem;line-height:1.7;margin-bottom:1.2rem;">Built an autonomous agent that researches prospects, scrapes contact info, writes personalized emails, and logs everything to a CRM — daily.</p>
+  169            <div style="display:flex;gap:2rem;padding-top:1rem;border-top:1px solid var(--dark-border);">
+
+pages\contact.html:
+   45              <div>
+   46:               <p style="font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;" class="text-muted">Email</p>
+   47:               <a href="mailto:ahsanraza@email.com" style="font-weight:600;text-decoration:none;color:inherit;font-size:0.95rem;">ahsanraza@email.com</a>
+   48              </div>
+
+  110              <div>
+  111:               <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;">Email *</label>
+  112:               <input type="email" class="input-field" placeholder="john@example.com" required />
+  113              </div>
